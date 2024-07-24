@@ -1,3 +1,11 @@
 textarea {
     min-height: 400px;
 }
+
+.mails .row{
+    user-select: none;
+}
+
+.bg-secondary{
+    background-color: #bdc7d0 !important;
+}
