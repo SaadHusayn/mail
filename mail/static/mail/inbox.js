@@ -10,9 +10,11 @@ document.addEventListener('DOMContentLoaded', function () {
   load_mailbox('inbox');
 
   // when submit button is pressed on compose mail
-  document.querySelector('#compose-form').onsubmit = function () {
-    // remove all error messages
+  document.querySelector('#compose-form').onsubmit = () => {
+
+    // remove all previous error messages
     document.querySelectorAll('.text-danger').forEach(e => e.remove());
+
     const Recipients = document.querySelector('#compose-recipients').value;
     const Subject = document.querySelector('#compose-subject').value;
     const Body = document.querySelector('#compose-body').value;
@@ -32,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
           error.classList.add("text-danger");
           error.innerHTML = result.error;
           document.querySelector('#compose-form').append(error);
-          console.log(result.error);
         } else {
           load_mailbox('sent');
         }
@@ -43,8 +44,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 
-function compose_email(recipient='', subject='', body='') {
-  // remove all errors
+function compose_email(recipient = '', subject = '', body = '') {
+
+  // remove all previous error messages
   document.querySelectorAll('.text-danger').forEach(e => e.remove());
 
   // Show compose view and hide other views
@@ -52,23 +54,22 @@ function compose_email(recipient='', subject='', body='') {
   document.querySelector('#mail-view').style.display = 'none';
   document.querySelector('#compose-view').style.display = 'block';
 
-  // Clear out composition fields
+
   document.querySelector('#compose-recipients').value = recipient;
   document.querySelector('#compose-subject').value = subject;
   document.querySelector('#compose-body').value = body;
-  console.log(body);
-  console.log(document.querySelector('#compose-body').value);
 
 
 }
 
 function load_mailbox(mailbox) {
+
   // Getting the HTML element from DOM
   var email_view = document.querySelector('#emails-view');
 
 
   // Show the mailbox and hide other views
-  document.querySelector('#emails-view').style.display = 'block';
+  email_view.style.display = 'block';
   document.querySelector('#mail-view').style.display = 'none';
   document.querySelector('#compose-view').style.display = 'none';
 
@@ -79,14 +80,14 @@ function load_mailbox(mailbox) {
   fetch(`/emails/${mailbox}`)
     .then(response => response.json())
     .then(emails => {
-      // Print emails on console
-      console.log(emails);
 
       if (emails.length === 0) {
+
         //mailbox is empty
         let message = document.createElement('h5');
         message.innerHTML = `(${mailBoxName} Mailbox is empty).`;
         email_view.append(message);
+
       } else {
 
         // ... modifying DOM ...
@@ -104,14 +105,30 @@ function load_mailbox(mailbox) {
           let email = document.createElement('div');
           email.className = "col-2 text-start fw-bold";
 
+
           if (mailbox === 'sent') {
+
+            // if user has sent email to himself, the word "me" should be displayed on the mail box
+            let recipient = mail.recipients[0];
+            if (mail.recipients[0] === document.querySelector('#user-email').innerHTML) {
+              recipient = 'me';
+            }
+
             if (mail.recipients.length > 1) {
-              email.innerHTML = `${mail.recipients[0]}, ...`;
+              email.innerHTML = `To: ${recipient}, ...`;
             } else {
-              email.innerHTML = `${mail.recipients[0]}`;
+              email.innerHTML = `To: ${recipient}`;
             }
           } else {
-            email.innerHTML = `${mail.sender}`;
+
+            // if user has recieved email to himself, the word "me" should be displayed on the mail box
+            let sender = mail.sender;
+            if (mail.sender === document.querySelector('#user-email').innerHTML) {
+              sender = 'me';
+            }
+
+
+            email.innerHTML = `${sender}`;
           }
 
           row.append(email);
@@ -130,9 +147,8 @@ function load_mailbox(mailbox) {
 
           container.append(row);
 
-          row.onclick = () => {
-            show_email_info(mail.id);
-          }
+          // when user click on an email from mailbox, information of that email should be displayed to the user 
+          row.onclick = () => show_email_info(mail.id, mailbox);
 
         })
       }
@@ -140,8 +156,7 @@ function load_mailbox(mailbox) {
     });
 }
 
-function show_email_info(email_id) {
-  console.log('hello');
+function show_email_info(email_id, mailbox) {
 
   // Show the mail-view and hide other views
   document.querySelector('#mail-view').style.display = 'block';
@@ -155,78 +170,91 @@ function show_email_info(email_id) {
   fetch(`/emails/${email_id}`, {
     method: 'PUT',
     body: JSON.stringify({
-        read: true
+      read: true
     })
   });
 
   fetch(`/emails/${email_id}`)
-  .then(response => response.json())
-  .then(email => {
-      // Print email
-      console.log(email);
+    .then(response => response.json())
+    .then(email => {
 
-      // ... do something else with email ...
-      let mailBody = `
-        <p><strong>From:</strong> ${email.sender}</p>
-        <p><strong>To:</strong> ${email.recipients}</p>
-        <p><strong>Subject:</strong> ${email.subject}</p>
-        <p><strong>Timestamp:</strong> ${email.timestamp}</p>
-        <button class="btn btn-sm btn-outline-primary" id="reply-button">Reply</button>
-        <hr>
-        <p><pre>${email.body}</pre></p>
-      `;
 
-      if(email.archived){
-        document.querySelector('#mail-view').innerHTML = `
-        ${mailBody}
-        <button class="btn btn-sm btn-outline-primary" onclick="remove_from_archive(${email.id})"  id="remove-archived">Remove From Archived</button>  
-        `; 
-      }else {
-        document.querySelector('#mail-view').innerHTML = `
-        ${mailBody}
-        <button class="btn btn-sm btn-outline-primary" onclick="add_to_archive(${email.id})" id="add-archived">Add To Archived</button>  
-        `; 
-      }
+      // ... modifying DOM of #mail-view element ...
+      document.querySelector('#mail-view').innerHTML = `
+      <p><strong>From:</strong> ${email.sender}</p>
+      <p><strong>To:</strong> ${email.recipients}</p>
+      <p><strong>Subject:</strong> ${email.subject}</p>
+      <p><strong>Timestamp:</strong> ${email.timestamp}</p>
+      <button class="btn btn-sm btn-outline-primary" id="reply-button">Reply</button>
+      <hr>
+      <p><pre>${email.body}</pre></p>
+    `;
 
-      document.querySelector('#reply-button').onclick = () => {
-        let recipient = email.sender;
-        let subject = email.subject;
-        let body = `On ${email.timestamp} ${email.sender} wrote: ${email.body}`;
+      //if mailbox of this email is 'sent', then there will be no archive button
+      if (mailbox !== 'sent') {
+        if (email.archived) {
 
-        if(!subject.startsWith('Re: ')){
-          subject = `Re: ${subject}`;
+          let button = document.createElement('button');
+          button.innerHTML = 'Remove From Archived';
+          button.className = 'btn btn-sm btn-outline-primary';
+          button.id = 'remove-archived';
+          button.onclick = () => { remove_from_archive(email.id) };
+          document.querySelector('#mail-view').append(button);
+
+        } else {
+
+          let button = document.createElement('button');
+          button.innerHTML = 'Add To Archived';
+          button.className = 'btn btn-sm btn-outline-primary';
+          button.id = 'add-archived';
+          button.onclick = () => { add_to_archive(email.id) };
+          document.querySelector('#mail-view').append(button);
+
         }
-
-        compose_email(recipient, subject, body);
       }
-      
-  });
+
+      document.querySelector('#reply-button').onclick = () => replyButton(email);
+
+    });
 }
 
-function add_to_archive(emailID){
-  
+function add_to_archive(emailID) {
+
   fetch(`/emails/${emailID}`, {
     method: 'PUT',
     body: JSON.stringify({
-        archived: true
+      archived: true
     })
   })
-  .then(() => {
-    load_mailbox('inbox');
-  })
+    .then(() => {
+      load_mailbox('inbox');
+    })
 
-  
+
 }
 
-function remove_from_archive(emailID){
-  
+function remove_from_archive(emailID) {
+
   fetch(`/emails/${emailID}`, {
     method: 'PUT',
     body: JSON.stringify({
-        archived: false
+      archived: false
     })
   })
-  .then(() => {
-    load_mailbox('inbox');
-  })
+    .then(() => {
+      load_mailbox('inbox');
+    })
+}
+
+function replyButton(email) {
+
+  let recipient = email.sender;
+  let subject = email.subject;
+  let body = `On ${email.timestamp} ${email.sender} wrote: ${email.body}`;
+
+  if (!subject.startsWith('Re: ')) {
+    subject = `Re: ${subject}`;
+  }
+
+  compose_email(recipient, subject, body);
 }
